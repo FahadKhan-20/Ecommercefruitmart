@@ -20,24 +20,35 @@ export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch all products ONCE from Supabase
+  // Fetch products and auto-refresh every 5 seconds
   useEffect(() => {
     let isMounted = true;
-    const getAllProducts = async () => {
-      setIsLoading(true);
+    
+    const getAllProducts = async (isInitialFetch = false) => {
+      if (isInitialFetch) setIsLoading(true);
+      
       const { fetchProducts } = await import('@/lib/services/productService');
       const data = await fetchProducts();
       
-      console.log(`[Supabase Fetch] Fetched ${data.length} total products from database.`);
-      
       if (isMounted) {
         setAllProducts(data);
-        setIsLoading(false);
+        if (isInitialFetch) setIsLoading(false);
       }
     };
-    getAllProducts();
-    return () => { isMounted = false; };
-  }, []); // Empty dependency array means it runs once on mount
+
+    // Initial fetch
+    getAllProducts(true);
+
+    // Auto-refresh interval
+    const intervalId = setInterval(() => {
+      getAllProducts(false);
+    }, 5000);
+
+    return () => { 
+      isMounted = false; 
+      clearInterval(intervalId);
+    };
+  }, []);
 
   // Filter locally for instant tab switching
   const products = allProducts.filter((product) => {

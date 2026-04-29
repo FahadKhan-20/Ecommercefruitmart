@@ -11,6 +11,7 @@ export default function Admin() {
   const [stock, setStock] = useState('');
   const [status, setStatus] = useState('In Stock');
   const [imageFile, setImageFile] = useState(null);
+  const [editingProductId, setEditingProductId] = useState(null);
   
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -102,53 +103,84 @@ export default function Admin() {
     }
   };
 
+  // Handle Edit Load
+  const handleEdit = (product) => {
+    setEditingProductId(product.id);
+    setName(product.name);
+    setPrice(product.price);
+    setCategory(product.category);
+    setStock(product.stock);
+    setStatus(product.status || 'In Stock');
+    setImageFile(null); // Keep existing image unless changed
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
 
     try {
-      if (!imageFile) {
+      if (!editingProductId && !imageFile) {
         throw new Error('Please select an image file.');
       }
 
-      // 1. Upload image to Supabase Storage
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, imageFile);
+      let publicUrl = null;
 
-      if (uploadError) {
-        throw uploadError;
+      if (imageFile) {
+        // 1. Upload image to Supabase Storage
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        // 2. Get public URL
+        const { data } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+        publicUrl = data.publicUrl;
       }
 
-      // 2. Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
+      if (editingProductId) {
+        // Update product
+        const updateData = {
+          name: name,
+          price: Number(price),
+          category: category,
+          stock: Number(stock),
+          status: status,
+        };
+        if (publicUrl) updateData.image = publicUrl;
 
-      // 3. Save product into Supabase table
-      const { error: insertError } = await supabase
-        .from('products')
-        .insert([
-          {
-            name: name,
-            price: Number(price),
-            category: category,
-            stock: Number(stock),
-            status: status,
-            image: publicUrl,
-            unit: "kg",
-          }
-        ]);
+        const { error: updateError } = await supabase
+          .from('products')
+          .update(updateData)
+          .eq('id', editingProductId);
 
-      if (insertError) {
-        throw insertError;
+        if (updateError) throw updateError;
+        setMessage({ type: 'success', text: 'Product updated successfully' });
+      } else {
+        // Insert product
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert([
+            {
+              name: name,
+              price: Number(price),
+              category: category,
+              stock: Number(stock),
+              status: status,
+              image: publicUrl,
+              unit: "kg",
+            }
+          ]);
+
+        if (insertError) throw insertError;
+        setMessage({ type: 'success', text: 'Product added successfully' });
       }
-
-      // Success
-      setMessage({ type: 'success', text: 'Product added successfully' });
       
       // Clear all form fields
       setName('');
@@ -157,15 +189,18 @@ export default function Admin() {
       setStock('');
       setStatus('In Stock');
       setImageFile(null);
+      setEditingProductId(null);
+      
       // Reset file input element visually
-      document.getElementById('image-upload').value = '';
+      const fileInput = document.getElementById('image-upload');
+      if (fileInput) fileInput.value = '';
       
       // Refresh product list automatically
       fetchProducts();
       
     } catch (error) {
-      console.error('Error adding product:', error);
-      setMessage({ type: 'error', text: 'Failed to add product: ' + error.message });
+      console.error('Error saving product:', error);
+      setMessage({ type: 'error', text: 'Failed to save product: ' + error.message });
     } finally {
       setLoading(false);
     }
@@ -176,7 +211,9 @@ export default function Admin() {
       
       {/* ADD PRODUCT FORM */}
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8 mt-10">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">Add New Product</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+          {editingProductId ? 'Edit Product' : 'Add New Product'}
+        </h1>
         
         {message.text && (
           <div className={`p-4 mb-6 rounded-md ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -255,28 +292,51 @@ export default function Admin() {
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image {editingProductId && '(Optional)'}</label>
             <input
               id="image-upload"
               type="file"
               accept="image/*"
-              required
+              required={!editingProductId}
               onChange={(e) => setImageFile(e.target.files[0])}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition bg-white text-black file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
             />
-            <p className="mt-1 text-xs text-gray-500">You can choose from gallery or use camera.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {editingProductId ? 'Leave empty to keep current image.' : 'You can choose from gallery or use camera.'}
+            </p>
           </div>
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition ${
-              loading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
-            }`}
-          >
-            {loading ? 'Adding Product...' : 'Add Product'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 px-4 rounded-lg text-white font-medium transition ${
+                loading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
+              }`}
+            >
+              {loading ? 'Saving...' : editingProductId ? 'Update Product' : 'Add Product'}
+            </button>
+            {editingProductId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProductId(null);
+                  setName('');
+                  setPrice('');
+                  setCategory('Fruits');
+                  setStock('');
+                  setStatus('In Stock');
+                  setImageFile(null);
+                  const fileInput = document.getElementById('image-upload');
+                  if (fileInput) fileInput.value = '';
+                }}
+                className="w-full py-3 px-4 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium transition"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -353,6 +413,14 @@ export default function Admin() {
                     }`}
                   >
                     {product.status === 'In Stock' || !product.status ? 'Out of Stock' : 'In Stock'}
+                  </button>
+
+                  {/* Edit Button */}
+                  <button
+                    onClick={() => handleEdit(product)}
+                    className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition cursor-pointer"
+                  >
+                    Edit
                   </button>
 
                   {/* Delete Button */}
