@@ -1,6 +1,6 @@
 /**
  * Product Type Definitions
- * Core types for product data structure used across the application
+ * Core product types for deployment
  */
 
 export type ProductCategory = 'Fruits' | 'Leafy Vegetables' | 'Root Vegetables' | 'Daily Vegetables';
