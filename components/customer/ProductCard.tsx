@@ -55,12 +55,14 @@ export default function ProductCard({
   };
 
   const getStockStatus = () => {
-    if (product.stock === 0) return { label: 'Out of Stock', color: 'text-red-600' };
+    if (product.status === 'Out of Stock' || product.stock === 0) return { label: 'Out of Stock', color: 'text-red-600' };
     if (product.stock < 10) return { label: 'Low Stock', color: 'text-orange-600' };
     return { label: null, color: '' };
   };
 
   const stockStatus = getStockStatus();
+  const imageSrc = product.image;
+  const isOutOfStock = product.status === 'Out of Stock' || product.stock === 0;
 
   return (
     <div className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden group h-full flex flex-col">
@@ -81,17 +83,12 @@ export default function ProductCard({
         )}
 
         {/* Product Image */}
-        <Link href={`/products/${product.id}`}>
+        <Link href={`/products/${product.id}`} className="block relative w-full h-full">
           <Image
-            src={product.image}
+            src={imageSrc}
             alt={product.name}
-            width={250}
-            height={200}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
-            onError={(e) => {
-              const imageElement = e.target as HTMLImageElement;
-              imageElement.src = '/images/placeholder.jpg';
-            }}
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
           />
         </Link>
       </div>
@@ -152,9 +149,9 @@ export default function ProductCard({
         {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          disabled={isAdding || product.stock === 0}
+          disabled={isAdding || isOutOfStock}
           className={`w-full mt-auto py-2 font-semibold rounded-lg transition-colors duration-200 text-sm md:text-base flex items-center justify-center gap-2 ${
-            product.stock === 0
+            isOutOfStock
               ? 'bg-gray-400 text-white cursor-not-allowed'
               : isAdding
               ? 'bg-green-500 text-white'
@@ -173,7 +170,7 @@ export default function ProductCard({
               </svg>
               Adding...
             </>
-          ) : product.stock === 0 ? (
+          ) : isOutOfStock ? (
             'Out of Stock'
           ) : (
             <>

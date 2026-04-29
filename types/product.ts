@@ -22,6 +22,7 @@ export interface Product {
   tags?: string[]; // For filtering and search
   isFeatured?: boolean; // For homepage
   benefits?: string[]; // Health benefits
+  status?: string; // e.g. 'In Stock' or 'Out of Stock'
 }
 
 export interface ProductFilterOptions {

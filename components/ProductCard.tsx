@@ -13,11 +13,10 @@ export default function ProductCard({ product }: { product: Product }) {
   const cartItem = items.find((item) => item.product.id === product.id);
   const quantity = cartItem?.quantity || 0;
 
+  const isOutOfStock = product.status === 'Out of Stock' || product.stock === 0;
+
   // Image source logic
-  let imageSrc = product.image;
-  if (!imageSrc || imageSrc.includes('placeholder')) {
-    imageSrc = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?q=80&w=400&auto=format&fit=crop';
-  }
+  const imageSrc = product.image;
 
   return (
     <motion.div
@@ -80,7 +79,11 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
 
           <div className="relative z-10">
-            {quantity === 0 ? (
+            {isOutOfStock ? (
+              <div className="flex items-center justify-center px-4 h-10 text-xs font-bold text-gray-500 bg-gray-100 rounded-2xl border border-gray-200 cursor-not-allowed">
+                Out of Stock
+              </div>
+            ) : quantity === 0 ? (
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={(e) => { e.preventDefault(); addItem(product); }}

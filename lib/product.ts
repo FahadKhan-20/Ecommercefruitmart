@@ -4,12 +4,12 @@
  */
 
 export * from '@/types/product';
-export { 
+export {
   products,
   FEATURED_PRODUCTS,
   CATEGORIES,
   getProductsByCategory,
   getProductById,
   filterProducts,
-  searchProducts 
+  searchProducts
 } from '@/lib/data/products';

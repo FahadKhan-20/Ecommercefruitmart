@@ -7,8 +7,9 @@ create table public.products (
   original_price numeric,
   unit text not null,
   stock integer not null default 0,
+  status text default 'In Stock',
   image text not null,
-  description text not null,
+  description text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

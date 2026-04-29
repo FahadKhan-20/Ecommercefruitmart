@@ -12,6 +12,7 @@ const mapDbToProduct = (dbProduct: any): Product => {
     price: dbProduct.price,
     unit: dbProduct.unit,
     stock: dbProduct.stock,
+    status: dbProduct.status,
     image: dbProduct.image,
     description: dbProduct.description,
   };
